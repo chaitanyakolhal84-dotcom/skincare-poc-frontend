@@ -1,0 +1,382 @@
+.profile-page {
+    min-height: 100vh;
+    background:
+        linear-gradient(135deg,
+            #f0f8f2,
+            #ffffff,
+            #edf7ef);
+}
+
+/* Navbar */
+
+.profile-navbar {
+    height: 72px;
+    padding: 0 6%;
+    background: white;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    box-shadow: 0 3px 18px rgba(0, 0, 0, 0.07);
+    position: sticky;
+    top: 0;
+    z-index: 10;
+}
+
+.profile-brand {
+    color: #285c38;
+    font-size: 22px;
+    font-weight: 700;
+    cursor: pointer;
+}
+
+.profile-nav-links {
+    display: flex;
+    align-items: center;
+    gap: 7px;
+}
+
+.profile-nav-links button {
+    border: none;
+    background: transparent;
+    color: #48634e;
+    padding: 9px 12px;
+    border-radius: 8px;
+    cursor: pointer;
+    font-weight: 600;
+}
+
+.profile-nav-links button:hover {
+    background: #eef7f0;
+    color: #285c38;
+}
+
+.profile-nav-links button.active {
+    background: #e4f2e7;
+    color: #285c38;
+}
+
+.profile-nav-links .logout-button {
+    background: #3f7d4d;
+    color: white;
+    margin-left: 8px;
+}
+
+.profile-nav-links .logout-button:hover {
+    background: #32673e;
+    color: white;
+}
+
+/* Container */
+
+.profile-container {
+    width: 90%;
+    max-width: 1150px;
+    margin: auto;
+    padding: 50px 0 70px;
+}
+
+.profile-header {
+    margin-bottom: 30px;
+}
+
+.profile-header>span {
+    color: #3f7d4d;
+    font-size: 12px;
+    font-weight: 800;
+    letter-spacing: 1.5px;
+}
+
+.profile-header h1 {
+    color: #244d32;
+    font-size: 34px;
+    margin: 8px 0;
+}
+
+.profile-header p {
+    color: #748078;
+    margin: 0;
+}
+
+/* Layout */
+
+.profile-layout {
+    display: grid;
+    grid-template-columns: 300px 1fr;
+    gap: 22px;
+}
+
+/* Profile Card */
+
+.profile-card {
+    background: white;
+    border-radius: 20px;
+    padding: 35px 25px;
+    text-align: center;
+    box-shadow:
+        0 10px 30px rgba(44, 92, 55, 0.08);
+}
+
+.profile-avatar {
+    width: 100px;
+    height: 100px;
+    margin: 0 auto 18px;
+    border-radius: 50%;
+    background:
+        linear-gradient(135deg,
+            #3f7d4d,
+            #7caf84);
+    color: white;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 40px;
+    font-weight: 700;
+    box-shadow:
+        0 8px 20px rgba(63, 125, 77, 0.25);
+}
+
+.profile-card h2 {
+    color: #285c38;
+    margin: 0 0 7px;
+}
+
+.profile-email {
+    color: #7d8780;
+    font-size: 14px;
+    word-break: break-word;
+}
+
+.role-badge {
+    display: inline-block;
+    margin-top: 10px;
+    padding: 6px 15px;
+    border-radius: 20px;
+    background: #eaf5ec;
+    color: #3f7d4d;
+    font-size: 12px;
+    font-weight: 700;
+    text-transform: uppercase;
+}
+
+/* Details */
+
+.details-card {
+    background: white;
+    border-radius: 20px;
+    padding: 30px;
+    box-shadow:
+        0 10px 30px rgba(44, 92, 55, 0.08);
+}
+
+.card-title {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    border-bottom: 1px solid #edf1ee;
+    padding-bottom: 18px;
+    margin-bottom: 25px;
+}
+
+.card-title h2 {
+    margin: 0;
+    color: #285c38;
+}
+
+.card-title span {
+    background: #e9f6ec;
+    color: #2f7942;
+    padding: 7px 12px;
+    border-radius: 20px;
+    font-size: 12px;
+    font-weight: 700;
+}
+
+.details-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 22px;
+}
+
+.detail-item {
+    background: #f7faf7;
+    padding: 18px;
+    border-radius: 12px;
+}
+
+.detail-item label {
+    display: block;
+    color: #89948c;
+    font-size: 12px;
+    margin-bottom: 7px;
+}
+
+.detail-item strong {
+    color: #315e3c;
+    word-break: break-word;
+}
+
+.points-value {
+    color: #2f7b43 !important;
+}
+
+/* Referral */
+
+.profile-referral-card {
+    margin-top: 25px;
+    padding: 25px 30px;
+    border-radius: 20px;
+    background:
+        linear-gradient(120deg,
+            #315e3c,
+            #4b8a5b);
+    color: white;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: 25px;
+    box-shadow:
+        0 15px 35px rgba(49, 94, 60, 0.18);
+}
+
+.referral-content {
+    display: flex;
+    align-items: center;
+    gap: 18px;
+}
+
+.referral-symbol {
+    width: 55px;
+    height: 55px;
+    border-radius: 14px;
+    background: rgba(255, 255, 255, 0.15);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 26px;
+}
+
+.profile-referral-card h2 {
+    margin: 0 0 5px;
+    font-size: 20px;
+}
+
+.profile-referral-card p {
+    margin: 0;
+    color: #dfefe2;
+}
+
+.profile-referral-code {
+    padding: 13px 22px;
+    border-radius: 10px;
+    background: rgba(255, 255, 255, 0.15);
+    font-weight: 800;
+    letter-spacing: 1.5px;
+}
+
+/* Quick Actions */
+
+.quick-section {
+    margin-top: 35px;
+}
+
+.quick-section h2 {
+    color: #285c38;
+    margin-bottom: 18px;
+}
+
+.quick-grid {
+    display: grid;
+    grid-template-columns:
+        repeat(4, 1fr);
+    gap: 16px;
+}
+
+.quick-grid button {
+    border: 1px solid #e4eee6;
+    background: white;
+    border-radius: 16px;
+    padding: 20px;
+    display: flex;
+    align-items: center;
+    gap: 13px;
+    text-align: left;
+    cursor: pointer;
+    box-shadow:
+        0 7px 20px rgba(44, 92, 55, 0.05);
+}
+
+.quick-grid button:hover {
+    transform: translateY(-3px);
+    border-color: #c8dfcc;
+}
+
+.quick-grid button>span {
+    font-size: 27px;
+}
+
+.quick-grid strong {
+    display: block;
+    color: #315e3c;
+    margin-bottom: 4px;
+}
+
+.quick-grid small {
+    color: #89938c;
+}
+
+.profile-loading {
+    min-height: 100vh;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: #315e3c;
+    font-size: 20px;
+}
+
+/* Responsive */
+
+@media (max-width: 950px) {
+    .quick-grid {
+        grid-template-columns: 1fr 1fr;
+    }
+
+    .profile-layout {
+        grid-template-columns: 1fr;
+    }
+}
+
+@media (max-width: 700px) {
+    .profile-navbar {
+        height: auto;
+        padding: 15px 5%;
+        flex-direction: column;
+        gap: 12px;
+    }
+
+    .profile-nav-links {
+        flex-wrap: wrap;
+        justify-content: center;
+    }
+
+    .profile-container {
+        width: 94%;
+        padding-top: 30px;
+    }
+
+    .details-grid {
+        grid-template-columns: 1fr;
+    }
+
+    .profile-referral-card {
+        flex-direction: column;
+        align-items: stretch;
+    }
+
+    .profile-referral-code {
+        text-align: center;
+    }
+
+    .quick-grid {
+        grid-template-columns: 1fr;
+    }
+}
