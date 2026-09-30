@@ -8,177 +8,438 @@ function Checkout() {
 
     const [user, setUser] = useState(null);
     const [cart, setCart] = useState([]);
-    const [loading, setLoading] = useState(false);
-    const [error, setError] = useState("");
-    const [success, setSuccess] = useState("");
 
-    const [formData, setFormData] = useState({
-        name: "",
-        email: "",
-        phone: "",
-        address: "",
-        city: "",
-        state: "",
-        pincode: "",
-        paymentMethod: "COD"
-    });
+    const [shippingAddress, setShippingAddress] =
+        useState("");
+
+    const [paymentMethod, setPaymentMethod] =
+        useState("COD");
+
+    // Coupon states
+    const [couponCode, setCouponCode] =
+        useState("");
+
+    const [couponData, setCouponData] =
+        useState(null);
+
+    const [couponError, setCouponError] =
+        useState("");
+
+    const [couponLoading, setCouponLoading] =
+        useState(false);
+
+    const [loading, setLoading] =
+        useState(false);
+
+    const [orderSuccess, setOrderSuccess] =
+        useState(false);
+
+    // ==========================================
+    // LOAD USER + CART
+    // ==========================================
 
     useEffect(() => {
-        const token = localStorage.getItem("token");
-        const storedUser = JSON.parse(
-            localStorage.getItem("user")
-        );
+        const savedUser =
+            JSON.parse(
+                localStorage.getItem("user")
+            );
 
-        if (!token || !storedUser) {
-            navigate("/login");
-            return;
-        }
-
-        setUser(storedUser);
-
-        setFormData((prev) => ({
-            ...prev,
-            name: storedUser.name || "",
-            email: storedUser.email || ""
-        }));
-
-        const storedCart =
+        const savedCart =
             JSON.parse(
                 localStorage.getItem("cart")
             ) || [];
 
-        if (storedCart.length === 0) {
-            navigate("/cart");
+        if (!savedUser) {
+            navigate("/login");
             return;
         }
 
-        setCart(storedCart);
+        setUser(savedUser);
+        setCart(savedCart);
     }, [navigate]);
 
-    const handleChange = (e) => {
-        const { name, value } = e.target;
-
-        setFormData((prev) => ({
-            ...prev,
-            [name]: value
-        }));
-    };
+    // ==========================================
+    // CART TOTAL
+    // ==========================================
 
     const subtotal = cart.reduce(
-        (total, item) =>
-            total +
-            Number(item.price) *
-            Number(item.quantity),
+        (total, item) => {
+            const price =
+                Number(item.price) || 0;
+
+            const quantity =
+                Number(item.quantity) || 0;
+
+            return total +
+                price * quantity;
+        },
         0
     );
 
-    const totalItems = cart.reduce(
-        (total, item) =>
-            total + Number(item.quantity),
-        0
-    );
+    const couponDiscount =
+        Number(couponData?.discount) || 0;
 
-    const handlePlaceOrder = async (e) => {
-        e.preventDefault();
+    const finalTotal =
+        Math.max(
+            0,
+            subtotal - couponDiscount
+        );
 
-        setError("");
-        setSuccess("");
+    // ==========================================
+    // APPLY COUPON
+    // ==========================================
 
-        if (
-            !formData.name.trim() ||
-            !formData.email.trim() ||
-            !formData.phone.trim() ||
-            !formData.address.trim() ||
-            !formData.city.trim() ||
-            !formData.state.trim() ||
-            !formData.pincode.trim()
-        ) {
-            setError(
-                "Please fill all required fields."
+    const applyCoupon = async () => {
+
+        if (!couponCode.trim()) {
+            setCouponError(
+                "Please enter a coupon code."
             );
             return;
         }
 
-        if (!/^[0-9]{10}$/.test(formData.phone)) {
-            setError(
-                "Please enter a valid 10-digit phone number."
-            );
-            return;
-        }
-
-        if (!/^[0-9]{6}$/.test(formData.pincode)) {
-            setError(
-                "Please enter a valid 6-digit PIN code."
+        if (cart.length === 0) {
+            setCouponError(
+                "Your cart is empty."
             );
             return;
         }
 
         try {
+            setCouponLoading(true);
+            setCouponError("");
+            setCouponData(null);
+
+            const response =
+                await api.post(
+                    "/coupons/apply",
+                    {
+                        code:
+                            couponCode
+                                .trim()
+                                .toUpperCase(),
+
+                        items: cart.map(
+                            (item) => ({
+                                product:
+                                    item.product ||
+                                    item._id,
+
+                                quantity:
+                                    Number(
+                                        item.quantity
+                                    )
+                            })
+                        )
+                    }
+                );
+
+            setCouponData(
+                response.data
+            );
+
+        } catch (error) {
+
+            console.error(
+                "Coupon error:",
+                error
+            );
+
+            setCouponData(null);
+
+            setCouponError(
+                error.response?.data
+                    ?.message ||
+                "Unable to apply coupon."
+            );
+
+        } finally {
+            setCouponLoading(false);
+        }
+    };
+
+    // ==========================================
+    // REMOVE COUPON
+    // ==========================================
+
+    const removeCoupon = () => {
+        setCouponData(null);
+        setCouponCode("");
+        setCouponError("");
+    };
+
+    // ==========================================
+    // PLACE ORDER
+    // ==========================================
+
+    const placeOrder = async (e) => {
+
+        e.preventDefault();
+
+        if (!user) {
+            alert(
+                "Please login before placing order."
+            );
+            navigate("/login");
+            return;
+        }
+
+        if (cart.length === 0) {
+            alert(
+                "Your cart is empty."
+            );
+            navigate("/products");
+            return;
+        }
+
+        if (!shippingAddress.trim()) {
+            alert(
+                "Please enter shipping address."
+            );
+            return;
+        }
+
+        try {
+
             setLoading(true);
 
-            const shippingAddress =
-                `${formData.name}, ${formData.phone}, ` +
-                `${formData.address}, ${formData.city}, ` +
-                `${formData.state} - ${formData.pincode}`;
+            /*
+             * IMPORTANT:
+             * We only send coupon CODE.
+             *
+             * Backend calculates the actual
+             * discount and final amount.
+             */
 
             const orderData = {
+
                 user: user.id,
 
-                items: cart.map((item) => ({
-                    product: item.product,
-                    quantity: Number(item.quantity)
-                })),
+                items: cart.map(
+                    (item) => ({
+                        product:
+                            item.product ||
+                            item._id,
 
-                shippingAddress,
+                        quantity:
+                            Number(
+                                item.quantity
+                            )
+                    })
+                ),
 
-                paymentMethod:
-                    formData.paymentMethod
+                shippingAddress:
+                    shippingAddress.trim(),
+
+                paymentMethod,
+
+                couponCode:
+                    couponData?.coupon?.code ||
+                    null
             };
 
-            const response = await api.post(
-                "/orders",
+            console.log(
+                "Creating order:",
                 orderData
             );
+
+            const response =
+                await api.post(
+                    "/orders",
+                    orderData
+                );
 
             console.log(
                 "Order created:",
                 response.data
             );
 
-            setSuccess(
-                "Order placed successfully!"
+            // Clear cart
+            localStorage.removeItem(
+                "cart"
             );
 
-            localStorage.removeItem("cart");
+            setCart([]);
+
+            setOrderSuccess(true);
+
+            /*
+             * Give user time to see
+             * success message.
+             */
 
             setTimeout(() => {
                 navigate("/orders");
-            }, 1000);
+            }, 1800);
 
-        } catch (err) {
+        } catch (error) {
+
             console.error(
-                "Checkout error:",
-                err
+                "Place order error:",
+                error
             );
 
-            setError(
-                err.response?.data?.message ||
-                "Unable to place order. Please try again."
+            alert(
+                error.response?.data
+                    ?.message ||
+                "Failed to place order."
             );
+
         } finally {
             setLoading(false);
         }
     };
 
+    // ==========================================
+    // EMPTY CART
+    // ==========================================
+
+    if (
+        !user
+    ) {
+        return (
+            <div className="checkout-loading">
+                Loading...
+            </div>
+        );
+    }
+
+    if (
+        cart.length === 0 &&
+        !orderSuccess
+    ) {
+        return (
+            <div className="checkout-page">
+
+                <nav className="checkout-navbar">
+
+                    <div
+                        className="checkout-brand"
+                        onClick={() =>
+                            navigate("/")
+                        }
+                    >
+                        🌿 Skincare POC
+                    </div>
+
+                    <div className="checkout-nav-links">
+
+                        <button
+                            onClick={() =>
+                                navigate(
+                                    "/products"
+                                )
+                            }
+                        >
+                            Products
+                        </button>
+
+                        <button
+                            onClick={() =>
+                                navigate(
+                                    "/cart"
+                                )
+                            }
+                        >
+                            🛒 Cart
+                        </button>
+
+                    </div>
+
+                </nav>
+
+                <div className="empty-checkout">
+
+                    <div className="empty-icon">
+                        🛒
+                    </div>
+
+                    <h2>
+                        Your cart is empty
+                    </h2>
+
+                    <p>
+                        Add some skincare
+                        products before
+                        checkout.
+                    </p>
+
+                    <button
+                        onClick={() =>
+                            navigate(
+                                "/products"
+                            )
+                        }
+                    >
+                        Browse Products
+                    </button>
+
+                </div>
+
+            </div>
+        );
+    }
+
+    // ==========================================
+    // SUCCESS SCREEN
+    // ==========================================
+
+    if (orderSuccess) {
+        return (
+            <div className="checkout-success-page">
+
+                <div className="success-card">
+
+                    <div className="success-icon">
+                        ✓
+                    </div>
+
+                    <h1>
+                        Order Placed Successfully!
+                    </h1>
+
+                    <p>
+                        Your skincare order
+                        has been created.
+                    </p>
+
+                    <p className="success-total">
+                        Total Paid:
+                        <strong>
+                            ₹
+                            {finalTotal.toLocaleString(
+                                "en-IN"
+                            )}
+                        </strong>
+                    </p>
+
+                    <p className="redirect-text">
+                        Redirecting to
+                        My Orders...
+                    </p>
+
+                </div>
+
+            </div>
+        );
+    }
+
+    // ==========================================
+    // MAIN CHECKOUT
+    // ==========================================
+
     return (
         <div className="checkout-page">
 
-            {/* Navbar */}
+            {/* NAVBAR */}
+
             <nav className="checkout-navbar">
 
                 <div
                     className="checkout-brand"
-                    onClick={() => navigate("/")}
+                    onClick={() =>
+                        navigate("/")
+                    }
                 >
                     🌿 Skincare POC
                 </div>
@@ -187,15 +448,9 @@ function Checkout() {
 
                     <button
                         onClick={() =>
-                            navigate("/")
-                        }
-                    >
-                        Home
-                    </button>
-
-                    <button
-                        onClick={() =>
-                            navigate("/products")
+                            navigate(
+                                "/products"
+                            )
                         }
                     >
                         Products
@@ -203,260 +458,121 @@ function Checkout() {
 
                     <button
                         onClick={() =>
-                            navigate("/cart")
+                            navigate(
+                                "/cart"
+                            )
                         }
                     >
-                        Cart
+                        🛒 Cart
                     </button>
 
                     <button
                         onClick={() =>
-                            navigate("/orders")
+                            navigate(
+                                "/orders"
+                            )
                         }
                     >
                         My Orders
                     </button>
 
                     <button
-                        className="checkout-logout"
-                        onClick={() => {
-                            localStorage.removeItem(
-                                "token"
-                            );
-
-                            localStorage.removeItem(
-                                "user"
-                            );
-
-                            navigate("/login");
-                        }}
+                        onClick={() =>
+                            navigate(
+                                "/profile"
+                            )
+                        }
                     >
-                        Logout
+                        Profile
                     </button>
 
                 </div>
+
             </nav>
 
-            {/* Main */}
+            {/* PAGE */}
+
             <main className="checkout-container">
 
                 <div className="checkout-heading">
+
                     <span>
-                        SECURE CHECKOUT
+                        🛍️
                     </span>
 
-                    <h1>
-                        Complete Your Order
-                    </h1>
+                    <div>
+                        <h1>
+                            Checkout
+                        </h1>
 
-                    <p>
-                        Enter your delivery details
-                        and choose your payment method.
-                    </p>
+                        <p>
+                            Complete your
+                            skincare order
+                        </p>
+                    </div>
+
                 </div>
 
-                {error && (
-                    <div className="checkout-error">
-                        ⚠️ {error}
-                    </div>
-                )}
+                <form
+                    onSubmit={placeOrder}
+                    className="checkout-layout"
+                >
 
-                {success && (
-                    <div className="checkout-success">
-                        ✓ {success}
-                    </div>
-                )}
+                    {/* LEFT SIDE */}
 
-                <div className="checkout-layout">
+                    <div className="checkout-left">
 
-                    {/* LEFT */}
-                    <form
-                        className="checkout-form-card"
-                        onSubmit={handlePlaceOrder}
-                    >
+                        {/* SHIPPING */}
 
-                        {/* Customer Details */}
-                        <section className="checkout-section">
+                        <section className="checkout-card">
 
-                            <div className="section-heading">
-                                <span>1</span>
+                            <div className="section-title">
+
+                                <span>
+                                    📦
+                                </span>
 
                                 <div>
                                     <h2>
-                                        Customer Details
+                                        Shipping Address
                                     </h2>
 
                                     <p>
-                                        Your basic contact information
-                                    </p>
-                                </div>
-                            </div>
-
-                            <div className="checkout-grid">
-
-                                <div className="input-group">
-                                    <label>
-                                        Full Name *
-                                    </label>
-
-                                    <input
-                                        type="text"
-                                        name="name"
-                                        value={
-                                            formData.name
-                                        }
-                                        onChange={
-                                            handleChange
-                                        }
-                                        placeholder="Enter your full name"
-                                    />
-                                </div>
-
-                                <div className="input-group">
-                                    <label>
-                                        Email Address *
-                                    </label>
-
-                                    <input
-                                        type="email"
-                                        name="email"
-                                        value={
-                                            formData.email
-                                        }
-                                        onChange={
-                                            handleChange
-                                        }
-                                        placeholder="Enter your email"
-                                    />
-                                </div>
-
-                                <div className="input-group full-width">
-                                    <label>
-                                        Phone Number *
-                                    </label>
-
-                                    <input
-                                        type="tel"
-                                        name="phone"
-                                        value={
-                                            formData.phone
-                                        }
-                                        onChange={
-                                            handleChange
-                                        }
-                                        placeholder="10-digit mobile number"
-                                        maxLength="10"
-                                    />
-                                </div>
-
-                            </div>
-
-                        </section>
-
-
-                        {/* Address */}
-                        <section className="checkout-section">
-
-                            <div className="section-heading">
-                                <span>2</span>
-
-                                <div>
-                                    <h2>
-                                        Delivery Address
-                                    </h2>
-
-                                    <p>
-                                        Where should we deliver
+                                        Where should
+                                        we deliver
                                         your order?
                                     </p>
                                 </div>
-                            </div>
-
-                            <div className="checkout-grid">
-
-                                <div className="input-group full-width">
-                                    <label>
-                                        Address *
-                                    </label>
-
-                                    <textarea
-                                        name="address"
-                                        value={
-                                            formData.address
-                                        }
-                                        onChange={
-                                            handleChange
-                                        }
-                                        placeholder="House / Flat / Street / Area"
-                                        rows="3"
-                                    />
-                                </div>
-
-                                <div className="input-group">
-                                    <label>
-                                        City *
-                                    </label>
-
-                                    <input
-                                        type="text"
-                                        name="city"
-                                        value={
-                                            formData.city
-                                        }
-                                        onChange={
-                                            handleChange
-                                        }
-                                        placeholder="Enter city"
-                                    />
-                                </div>
-
-                                <div className="input-group">
-                                    <label>
-                                        State *
-                                    </label>
-
-                                    <input
-                                        type="text"
-                                        name="state"
-                                        value={
-                                            formData.state
-                                        }
-                                        onChange={
-                                            handleChange
-                                        }
-                                        placeholder="Enter state"
-                                    />
-                                </div>
-
-                                <div className="input-group">
-                                    <label>
-                                        PIN Code *
-                                    </label>
-
-                                    <input
-                                        type="text"
-                                        name="pincode"
-                                        value={
-                                            formData.pincode
-                                        }
-                                        onChange={
-                                            handleChange
-                                        }
-                                        placeholder="6-digit PIN"
-                                        maxLength="6"
-                                    />
-                                </div>
 
                             </div>
+
+                            <textarea
+                                value={
+                                    shippingAddress
+                                }
+                                onChange={(e) =>
+                                    setShippingAddress(
+                                        e.target.value
+                                    )
+                                }
+                                placeholder={
+                                    "Enter full shipping address\nExample: Flat 101, ABC Society, Pune, Maharashtra, India"
+                                }
+                                rows="5"
+                                required
+                            />
 
                         </section>
 
+                        {/* PAYMENT */}
 
-                        {/* Payment */}
-                        <section className="checkout-section">
+                        <section className="checkout-card">
 
-                            <div className="section-heading">
-                                <span>3</span>
+                            <div className="section-title">
+
+                                <span>
+                                    💳
+                                </span>
 
                                 <div>
                                     <h2>
@@ -464,153 +580,463 @@ function Checkout() {
                                     </h2>
 
                                     <p>
-                                        Select your preferred
-                                        payment option
+                                        Select your
+                                        preferred
+                                        payment method
                                     </p>
                                 </div>
+
                             </div>
 
-                            <label className="payment-option">
+                            <div className="payment-options">
 
-                                <input
-                                    type="radio"
-                                    name="paymentMethod"
-                                    value="COD"
-                                    checked={
-                                        formData.paymentMethod ===
-                                        "COD"
-                                    }
-                                    onChange={
-                                        handleChange
-                                    }
-                                />
-
-                                <div>
-                                    <strong>
-                                        💵 Cash on Delivery
-                                    </strong>
-
-                                    <small>
-                                        Pay when your order
-                                        arrives.
-                                    </small>
-                                </div>
-
-                            </label>
-
-                        </section>
-
-
-                        <button
-                            type="submit"
-                            className="place-order-button"
-                            disabled={loading}
-                        >
-                            {loading
-                                ? "Placing Order..."
-                                : `Place Order • ₹${subtotal}`}
-                        </button>
-
-                    </form>
-
-
-                    {/* RIGHT - ORDER SUMMARY */}
-                    <aside className="order-summary">
-
-                        <div className="summary-header">
-                            <h2>
-                                Order Summary
-                            </h2>
-
-                            <span>
-                                {totalItems} item
-                                {totalItems !== 1
-                                    ? "s"
-                                    : ""}
-                            </span>
-                        </div>
-
-                        <div className="summary-items">
-
-                            {cart.map((item, index) => (
-                                <div
-                                    className="summary-item"
-                                    key={
-                                        item.product ||
-                                        index
+                                <label
+                                    className={
+                                        paymentMethod ===
+                                            "COD"
+                                            ? "payment-option selected"
+                                            : "payment-option"
                                     }
                                 >
 
-                                    <div className="summary-product-icon">
-                                        🌿
+                                    <input
+                                        type="radio"
+                                        name="payment"
+                                        value="COD"
+                                        checked={
+                                            paymentMethod ===
+                                            "COD"
+                                        }
+                                        onChange={(e) =>
+                                            setPaymentMethod(
+                                                e.target.value
+                                            )
+                                        }
+                                    />
+
+                                    <span className="payment-icon">
+                                        💵
+                                    </span>
+
+                                    <div>
+                                        <strong>
+                                            Cash on Delivery
+                                        </strong>
+
+                                        <small>
+                                            Pay when your
+                                            order arrives
+                                        </small>
                                     </div>
 
-                                    <div className="summary-product-info">
+                                </label>
+
+                                <label
+                                    className={
+                                        paymentMethod ===
+                                            "Online"
+                                            ? "payment-option selected"
+                                            : "payment-option"
+                                    }
+                                >
+
+                                    <input
+                                        type="radio"
+                                        name="payment"
+                                        value="Online"
+                                        checked={
+                                            paymentMethod ===
+                                            "Online"
+                                        }
+                                        onChange={(e) =>
+                                            setPaymentMethod(
+                                                e.target.value
+                                            )
+                                        }
+                                    />
+
+                                    <span className="payment-icon">
+                                        💳
+                                    </span>
+
+                                    <div>
+                                        <strong>
+                                            Online Payment
+                                        </strong>
+
+                                        <small>
+                                            Pay securely
+                                            online
+                                        </small>
+                                    </div>
+
+                                </label>
+
+                            </div>
+
+                        </section>
+
+                        {/* COUPON */}
+
+                        <section className="checkout-card coupon-card">
+
+                            <div className="section-title">
+
+                                <span>
+                                    🎟️
+                                </span>
+
+                                <div>
+                                    <h2>
+                                        Apply Coupon
+                                    </h2>
+
+                                    <p>
+                                        Save more on
+                                        your skincare
+                                        order
+                                    </p>
+                                </div>
+
+                            </div>
+
+                            <div className="coupon-input-row">
+
+                                <input
+                                    type="text"
+                                    value={
+                                        couponCode
+                                    }
+                                    onChange={(e) =>
+                                        setCouponCode(
+                                            e.target.value
+                                                .toUpperCase()
+                                        )
+                                    }
+                                    placeholder="Enter coupon code"
+                                    disabled={
+                                        !!couponData
+                                    }
+                                />
+
+                                {!couponData ? (
+
+                                    <button
+                                        type="button"
+                                        className="apply-coupon-btn"
+                                        onClick={
+                                            applyCoupon
+                                        }
+                                        disabled={
+                                            couponLoading
+                                        }
+                                    >
+                                        {couponLoading
+                                            ? "Applying..."
+                                            : "Apply"}
+                                    </button>
+
+                                ) : (
+
+                                    <button
+                                        type="button"
+                                        className="remove-coupon-btn"
+                                        onClick={
+                                            removeCoupon
+                                        }
+                                    >
+                                        Remove
+                                    </button>
+
+                                )}
+
+                            </div>
+
+                            {couponData && (
+
+                                <div className="coupon-success">
+
+                                    <div className="coupon-success-icon">
+                                        ✓
+                                    </div>
+
+                                    <div className="coupon-success-content">
 
                                         <strong>
-                                            {item.name}
+                                            Coupon Applied!
                                         </strong>
 
                                         <span>
-                                            Qty:{" "}
-                                            {item.quantity}
+                                            {
+                                                couponData
+                                                    .coupon
+                                                    ?.name
+                                            }
                                         </span>
+
+                                        <small>
+                                            {couponData.description}
+                                        </small>
 
                                     </div>
 
-                                    <strong>
-                                        ₹
-                                        {Number(
-                                            item.price
-                                        ) *
+                                    <div className="coupon-saving">
+
+                                        Save
+
+                                        <strong>
+                                            ₹
+                                            {Number(
+                                                couponData.discount ||
+                                                0
+                                            ).toLocaleString(
+                                                "en-IN"
+                                            )}
+                                        </strong>
+
+                                    </div>
+
+                                </div>
+
+                            )}
+
+                            {couponError && (
+
+                                <div className="coupon-error">
+                                    ❌ {couponError}
+                                </div>
+
+                            )}
+
+                            <div className="coupon-hint">
+
+                                💡 Try:
+
+                                <span>
+                                    BUY1GET1
+                                </span>
+
+                                <span>
+                                    WELCOME10
+                                </span>
+
+                                <span>
+                                    FLAT100
+                                </span>
+
+                            </div>
+
+                        </section>
+
+                    </div>
+
+                    {/* RIGHT SIDE */}
+
+                    <div className="checkout-right">
+
+                        <section className="checkout-card order-summary">
+
+                            <div className="section-title">
+
+                                <span>
+                                    🧾
+                                </span>
+
+                                <div>
+                                    <h2>
+                                        Order Summary
+                                    </h2>
+
+                                    <p>
+                                        {cart.length}
+                                        {" "}
+                                        item
+                                        {cart.length !== 1
+                                            ? "s"
+                                            : ""}
+                                    </p>
+                                </div>
+
+                            </div>
+
+                            {/* PRODUCTS */}
+
+                            <div className="summary-products">
+
+                                {cart.map(
+                                    (item, index) => {
+
+                                        const productId =
+                                            item.product ||
+                                            item._id;
+
+                                        const price =
+                                            Number(
+                                                item.price
+                                            ) || 0;
+
+                                        const quantity =
                                             Number(
                                                 item.quantity
-                                            )}
+                                            ) || 0;
+
+                                        return (
+                                            <div
+                                                className="summary-product"
+                                                key={
+                                                    productId ||
+                                                    index
+                                                }
+                                            >
+
+                                                <div className="product-info">
+
+                                                    <div className="product-mini-icon">
+                                                        🌿
+                                                    </div>
+
+                                                    <div>
+
+                                                        <strong>
+                                                            {
+                                                                item.name ||
+                                                                item.productName ||
+                                                                "Skincare Product"
+                                                            }
+                                                        </strong>
+
+                                                        <span>
+                                                            Qty:
+                                                            {" "}
+                                                            {quantity}
+                                                        </span>
+
+                                                    </div>
+
+                                                </div>
+
+                                                <strong>
+                                                    ₹
+                                                    {(
+                                                        price *
+                                                        quantity
+                                                    ).toLocaleString(
+                                                        "en-IN"
+                                                    )}
+                                                </strong>
+
+                                            </div>
+                                        );
+                                    }
+                                )}
+
+                            </div>
+
+                            <div className="summary-divider" />
+
+                            {/* SUBTOTAL */}
+
+                            <div className="summary-row">
+
+                                <span>
+                                    Subtotal
+                                </span>
+
+                                <strong>
+                                    ₹
+                                    {subtotal.toLocaleString(
+                                        "en-IN"
+                                    )}
+                                </strong>
+
+                            </div>
+
+                            {/* COUPON DISCOUNT */}
+
+                            {couponDiscount > 0 && (
+
+                                <div className="summary-row discount-row">
+
+                                    <span>
+                                        🎟️ Coupon Discount
+                                    </span>
+
+                                    <strong>
+                                        -₹
+                                        {couponDiscount.toLocaleString(
+                                            "en-IN"
+                                        )}
                                     </strong>
 
                                 </div>
-                            ))}
 
-                        </div>
+                            )}
 
-                        <div className="summary-line">
-                            <span>
-                                Subtotal
-                            </span>
+                            <div className="summary-divider" />
 
-                            <strong>
-                                ₹{subtotal}
-                            </strong>
-                        </div>
+                            {/* TOTAL */}
 
-                        <div className="summary-line">
-                            <span>
-                                Delivery
-                            </span>
+                            <div className="final-total-row">
 
-                            <strong className="free">
-                                FREE
-                            </strong>
-                        </div>
+                                <span>
+                                    Total
+                                </span>
 
-                        <div className="summary-total">
-                            <span>
-                                Total
-                            </span>
+                                <strong>
+                                    ₹
+                                    {finalTotal.toLocaleString(
+                                        "en-IN"
+                                    )}
+                                </strong>
 
-                            <strong>
-                                ₹{subtotal}
-                            </strong>
-                        </div>
+                            </div>
 
-                        <div className="secure-message">
-                            🔒 Your information is
-                            securely processed.
-                        </div>
+                            {couponDiscount > 0 && (
 
-                    </aside>
+                                <div className="total-saving">
 
-                </div>
+                                    🎉 You saved ₹
+                                    {couponDiscount.toLocaleString(
+                                        "en-IN"
+                                    )}
+
+                                </div>
+
+                            )}
+
+                            <button
+                                type="submit"
+                                className="place-order-btn"
+                                disabled={
+                                    loading
+                                }
+                            >
+
+                                {loading
+                                    ? "Placing Order..."
+                                    : `Place Order • ₹${finalTotal.toLocaleString(
+                                        "en-IN"
+                                    )}`}
+
+                            </button>
+
+                            <button
+                                type="button"
+                                className="back-cart-btn"
+                                onClick={() =>
+                                    navigate(
+                                        "/cart"
+                                    )
+                                }
+                            >
+                                ← Back to Cart
+                            </button>
+
+                        </section>
+
+                    </div>
+
+                </form>
 
             </main>
 

@@ -21,27 +21,39 @@ import AdminOrders from "./pages/AdminOrders";
 import "./App.css";
 
 
+// ==========================================
+// HOME PAGE
+// ==========================================
 function Home() {
+
   const user = JSON.parse(
     localStorage.getItem("user")
   );
 
+  // ==========================================
+  // LOGOUT
+  // ==========================================
   const logout = () => {
+
     localStorage.removeItem("token");
     localStorage.removeItem("user");
 
     window.location.href = "/login";
   };
 
+
   return (
     <div className="home-page">
 
-      {/* Navbar */}
+      {/* =========================================
+                NAVBAR
+            ========================================= */}
       <nav className="navbar">
 
         <div className="brand">
           🌿 Skincare POC
         </div>
+
 
         <div className="home-nav-links">
 
@@ -69,11 +81,14 @@ function Home() {
             🛒 Cart
           </a>
 
+
+          {/* Admin Link */}
           {user?.role === "admin" && (
             <a href="/admin">
               Admin
             </a>
           )}
+
 
           <button
             className="logout-button"
@@ -87,18 +102,91 @@ function Home() {
       </nav>
 
 
-      {/* Home Content */}
+      {/* =========================================
+                HOME CONTENT
+            ========================================= */}
       <main className="home-content">
 
+
+        {/* =========================================
+                    COUPON ADVERTISEMENT
+                ========================================= */}
+        <div className="coupon-ad">
+
+          {/* Coupon Icon */}
+          <div className="coupon-ad-icon">
+            🎟️
+          </div>
+
+
+          {/* Coupon Content */}
+          <div className="coupon-ad-content">
+
+            <span className="coupon-ad-badge">
+              LIMITED OFFER
+            </span>
+
+
+            <h2>
+              BUY 1 GET 1 FREE 🎁
+            </h2>
+
+
+            <p>
+              Buy 1 product and get 1 product
+              free on selected skincare products.
+            </p>
+
+
+            <div className="coupon-ad-actions">
+
+              <div className="coupon-code-box">
+
+                <span>
+                  Use Code
+                </span>
+
+                <strong>
+                  BUY1GET1
+                </strong>
+
+              </div>
+
+
+              <a
+                href="/products"
+                className="coupon-shop-button"
+              >
+                Shop Now →
+              </a>
+
+            </div>
+
+          </div>
+
+
+          {/* Decoration */}
+          <div className="coupon-ad-decoration">
+            🌿
+          </div>
+
+        </div>
+
+
+        {/* =========================================
+                    WELCOME CARD
+                ========================================= */}
         <div className="welcome-card">
 
           <div className="welcome-icon">
             🌿
           </div>
 
+
           <h1>
             Welcome, {user?.name || "User"}!
           </h1>
+
 
           <p>
             Welcome to Skincare POC.
@@ -108,6 +196,7 @@ function Home() {
           </p>
 
 
+          {/* USER INFORMATION */}
           <div className="user-info">
 
             <div>
@@ -145,11 +234,13 @@ function Home() {
           </div>
 
 
+          {/* HOME BUTTONS */}
           <div className="home-buttons">
 
             <a href="/products">
               Browse Products
             </a>
+
 
             <a
               href="/rewards"
@@ -169,15 +260,18 @@ function Home() {
 }
 
 
+// ==========================================
+// MAIN APP
+// ==========================================
 function App() {
 
   return (
+
     <BrowserRouter>
 
       <Routes>
 
-        {/* User Routes */}
-
+        {/* Authentication */}
         <Route
           path="/login"
           element={<Login />}
@@ -188,6 +282,8 @@ function App() {
           element={<Register />}
         />
 
+
+        {/* User Pages */}
         <Route
           path="/"
           element={<Home />}
@@ -224,8 +320,7 @@ function App() {
         />
 
 
-        {/* Admin Routes */}
-
+        {/* Admin Pages */}
         <Route
           path="/admin"
           element={<AdminDashboard />}
@@ -243,7 +338,6 @@ function App() {
 
 
         {/* Unknown Route */}
-
         <Route
           path="*"
           element={
