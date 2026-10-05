@@ -24,6 +24,9 @@ function AdminProducts() {
         skinType: ""
     });
 
+    // ==========================================
+    // CHECK ADMIN + LOAD PRODUCTS
+    // ==========================================
     useEffect(() => {
         const user = JSON.parse(
             localStorage.getItem("user")
@@ -42,6 +45,9 @@ function AdminProducts() {
         fetchProducts();
     }, [navigate]);
 
+    // ==========================================
+    // GET PRODUCTS
+    // ==========================================
     const fetchProducts = async () => {
         try {
             setLoading(true);
@@ -49,19 +55,31 @@ function AdminProducts() {
 
             const response = await api.get("/products");
 
-            setProducts(response.data.products || response.data || []);
+            setProducts(
+                response.data.products ||
+                response.data ||
+                []
+            );
+
         } catch (err) {
-            console.error("Fetch products error:", err);
+            console.error(
+                "Fetch products error:",
+                err
+            );
 
             setError(
                 err.response?.data?.message ||
                 "Failed to load products."
             );
+
         } finally {
             setLoading(false);
         }
     };
 
+    // ==========================================
+    // HANDLE INPUT
+    // ==========================================
     const handleChange = (e) => {
         const { name, value } = e.target;
 
@@ -71,6 +89,9 @@ function AdminProducts() {
         }));
     };
 
+    // ==========================================
+    // RESET FORM
+    // ==========================================
     const resetForm = () => {
         setForm({
             name: "",
@@ -85,23 +106,41 @@ function AdminProducts() {
         setEditingId(null);
     };
 
+    // ==========================================
+    // ADD / UPDATE PRODUCT
+    // ==========================================
     const handleSubmit = async (e) => {
         e.preventDefault();
 
         setError("");
         setSuccess("");
 
+        // Convert values properly
+        const stockValue =
+            Number(form.stockQuantity);
+
+        const priceValue =
+            Number(form.price);
+
         const productData = {
             name: form.name.trim(),
             brand: form.brand.trim(),
             category: form.category.trim(),
-            price: Number(form.price),
-            stockQuantity: Number(form.stockQuantity),
+            price: priceValue,
+            stockQuantity: stockValue,
             description: form.description.trim(),
-            skinType: form.skinType.trim()
+            skinType: form.skinType
+                ? form.skinType
+                    .split(",")
+                    .map((item) => item.trim())
+                    .filter(Boolean)
+                : []
         };
 
-        // Required field validation
+        // ==========================================
+        // VALIDATION
+        // ==========================================
+
         if (!productData.name) {
             setError("Product name is required.");
             return;
@@ -117,35 +156,69 @@ function AdminProducts() {
             return;
         }
 
-        if (!productData.price || productData.price <= 0) {
+        if (
+            Number.isNaN(priceValue) ||
+            priceValue <= 0
+        ) {
             setError("Please enter a valid price.");
             return;
         }
 
         if (
-            productData.stockQuantity < 0 ||
-            Number.isNaN(productData.stockQuantity)
+            Number.isNaN(stockValue) ||
+            stockValue < 0
         ) {
-            setError("Please enter a valid stock quantity.");
+            setError(
+                "Please enter a valid stock quantity."
+            );
             return;
         }
 
         try {
             setSaving(true);
 
+            // ==========================================
+            // UPDATE PRODUCT
+            // ==========================================
             if (editingId) {
-                await api.put(
+
+                console.log(
+                    "UPDATING PRODUCT ID:",
+                    editingId
+                );
+
+                console.log(
+                    "PRODUCT DATA:",
+                    productData
+                );
+
+                const response = await api.put(
                     `/products/${editingId}`,
                     productData
+                );
+
+                console.log(
+                    "UPDATE RESPONSE:",
+                    response.data
                 );
 
                 setSuccess(
                     "Product updated successfully!"
                 );
+
             } else {
-                await api.post(
+
+                // ==========================================
+                // CREATE PRODUCT
+                // ==========================================
+                const response = await api.post(
                     "/products",
                     productData
+                );
+
+                console.log(
+                    "CREATE RESPONSE:",
+                    response.data
                 );
 
                 setSuccess(
@@ -154,20 +227,29 @@ function AdminProducts() {
             }
 
             resetForm();
+
             await fetchProducts();
+
         } catch (err) {
-            console.error("Save product error:", err);
+            console.error(
+                "Save product error:",
+                err
+            );
 
             setError(
                 err.response?.data?.message ||
                 err.response?.data?.error ||
                 "Failed to save product."
             );
+
         } finally {
             setSaving(false);
         }
     };
 
+    // ==========================================
+    // EDIT PRODUCT
+    // ==========================================
     const editProduct = (product) => {
         setEditingId(product._id);
 
@@ -175,10 +257,23 @@ function AdminProducts() {
             name: product.name || "",
             brand: product.brand || "",
             category: product.category || "",
-            price: product.price ?? "",
-            stockQuantity: product.stockQuantity ?? "",
-            description: product.description || "",
-            skinType: product.skinType || ""
+            price:
+                product.price !== undefined
+                    ? product.price
+                    : "",
+
+            stockQuantity:
+                product.stockQuantity !== undefined
+                    ? product.stockQuantity
+                    : "",
+
+            description:
+                product.description || "",
+
+            skinType:
+                Array.isArray(product.skinType)
+                    ? product.skinType.join(", ")
+                    : product.skinType || ""
         });
 
         setError("");
@@ -190,10 +285,15 @@ function AdminProducts() {
         });
     };
 
+    // ==========================================
+    // DELETE PRODUCT
+    // ==========================================
     const deleteProduct = async (productId) => {
-        const confirmDelete = window.confirm(
-            "Are you sure you want to delete this product?"
-        );
+
+        const confirmDelete =
+            window.confirm(
+                "Are you sure you want to delete this product?"
+            );
 
         if (!confirmDelete) {
             return;
@@ -216,8 +316,12 @@ function AdminProducts() {
             }
 
             await fetchProducts();
+
         } catch (err) {
-            console.error("Delete product error:", err);
+            console.error(
+                "Delete product error:",
+                err
+            );
 
             setError(
                 err.response?.data?.message ||
@@ -227,33 +331,47 @@ function AdminProducts() {
         }
     };
 
+    // ==========================================
+    // CANCEL EDIT
+    // ==========================================
     const handleCancelEdit = () => {
         resetForm();
         setError("");
         setSuccess("");
     };
 
+    // ==========================================
+    // UI
+    // ==========================================
     return (
         <div className="admin-products-page">
 
-            {/* Header */}
+            {/* HEADER */}
             <div className="admin-products-header">
+
                 <div>
-                    <h1>🌿 Manage Products</h1>
+                    <h1>
+                        🌿 Manage Products
+                    </h1>
+
                     <p>
-                        Add, edit and manage skincare products.
+                        Add, edit and manage
+                        skincare products.
                     </p>
                 </div>
 
                 <button
                     className="back-button"
-                    onClick={() => navigate("/admin")}
+                    onClick={() =>
+                        navigate("/admin")
+                    }
                 >
                     ← Admin Dashboard
                 </button>
+
             </div>
 
-            {/* Messages */}
+            {/* MESSAGES */}
             {error && (
                 <div className="message error-message">
                     ❌ {error}
@@ -266,10 +384,11 @@ function AdminProducts() {
                 </div>
             )}
 
-            {/* Product Form */}
+            {/* PRODUCT FORM */}
             <div className="admin-product-form-card">
 
                 <div className="form-header">
+
                     <h2>
                         {editingId
                             ? "✏️ Edit Product"
@@ -280,11 +399,14 @@ function AdminProducts() {
                         <button
                             type="button"
                             className="cancel-edit-button"
-                            onClick={handleCancelEdit}
+                            onClick={
+                                handleCancelEdit
+                            }
                         >
                             Cancel Edit
                         </button>
                     )}
+
                 </div>
 
                 <form
@@ -292,8 +414,9 @@ function AdminProducts() {
                     className="admin-product-form"
                 >
 
-                    {/* Product Name */}
+                    {/* PRODUCT NAME */}
                     <div className="form-group">
+
                         <label>
                             Product Name *
                         </label>
@@ -306,10 +429,12 @@ function AdminProducts() {
                             placeholder="e.g. Vitamin C Face Serum"
                             required
                         />
+
                     </div>
 
-                    {/* Brand */}
+                    {/* BRAND */}
                     <div className="form-group">
+
                         <label>
                             Brand *
                         </label>
@@ -322,10 +447,12 @@ function AdminProducts() {
                             placeholder="e.g. GlowCare"
                             required
                         />
+
                     </div>
 
-                    {/* Category */}
+                    {/* CATEGORY */}
                     <div className="form-group">
+
                         <label>
                             Category *
                         </label>
@@ -338,10 +465,12 @@ function AdminProducts() {
                             placeholder="e.g. Face Serum"
                             required
                         />
+
                     </div>
 
-                    {/* Price */}
+                    {/* PRICE */}
                     <div className="form-group">
+
                         <label>
                             Price (₹) *
                         </label>
@@ -356,10 +485,12 @@ function AdminProducts() {
                             step="0.01"
                             required
                         />
+
                     </div>
 
-                    {/* Stock */}
+                    {/* STOCK */}
                     <div className="form-group">
+
                         <label>
                             Stock Quantity *
                         </label>
@@ -371,12 +502,15 @@ function AdminProducts() {
                             onChange={handleChange}
                             placeholder="e.g. 100"
                             min="0"
+                            step="1"
                             required
                         />
+
                     </div>
 
-                    {/* Skin Type */}
+                    {/* SKIN TYPE */}
                     <div className="form-group">
+
                         <label>
                             Skin Type
                         </label>
@@ -388,10 +522,12 @@ function AdminProducts() {
                             onChange={handleChange}
                             placeholder="e.g. Normal, Dry, Oily"
                         />
+
                     </div>
 
-                    {/* Description */}
+                    {/* DESCRIPTION */}
                     <div className="form-group full-width">
+
                         <label>
                             Description
                         </label>
@@ -403,9 +539,10 @@ function AdminProducts() {
                             placeholder="Enter product description..."
                             rows="4"
                         />
+
                     </div>
 
-                    {/* Buttons */}
+                    {/* BUTTONS */}
                     <div className="form-actions full-width">
 
                         <button
@@ -430,21 +567,28 @@ function AdminProducts() {
                         </button>
 
                     </div>
+
                 </form>
             </div>
 
-            {/* Products Section */}
+            {/* PRODUCT LIST */}
             <div className="products-list-section">
 
                 <div className="products-list-header">
+
                     <div>
-                        <h2>📦 Product List</h2>
+
+                        <h2>
+                            📦 Product List
+                        </h2>
+
                         <p>
                             Total Products:{" "}
                             <strong>
                                 {products.length}
                             </strong>
                         </p>
+
                     </div>
 
                     <button
@@ -454,16 +598,26 @@ function AdminProducts() {
                     >
                         🔄 Refresh
                     </button>
+
                 </div>
 
-                {/* Loading */}
+                {/* LOADING */}
                 {loading ? (
+
                     <div className="loading-box">
+
                         <div className="loading-spinner"></div>
-                        <p>Loading products...</p>
+
+                        <p>
+                            Loading products...
+                        </p>
+
                     </div>
+
                 ) : products.length === 0 ? (
+
                     <div className="empty-products">
+
                         <div className="empty-icon">
                             📦
                         </div>
@@ -473,25 +627,27 @@ function AdminProducts() {
                         </h3>
 
                         <p>
-                            Add your first skincare product
-                            using the form above.
+                            Add your first skincare
+                            product using the form above.
                         </p>
+
                     </div>
+
                 ) : (
+
                     <div className="admin-products-grid">
 
                         {products.map((product) => (
+
                             <div
                                 className="admin-product-card"
                                 key={product._id}
                             >
 
-                                {/* Product Icon */}
                                 <div className="product-card-icon">
                                     🌿
                                 </div>
 
-                                {/* Product Details */}
                                 <div className="product-card-content">
 
                                     <h3>
@@ -502,7 +658,6 @@ function AdminProducts() {
                                         {product.brand}
                                     </p>
 
-                                    {/* Category */}
                                     <p className="product-category">
                                         <strong>
                                             Category:
@@ -511,16 +666,15 @@ function AdminProducts() {
                                             "N/A"}
                                     </p>
 
-                                    {/* Description */}
                                     <p className="product-description">
                                         {product.description ||
                                             "No description available."}
                                     </p>
 
-                                    {/* Product Information */}
                                     <div className="product-info">
 
                                         <div>
+
                                             <span>
                                                 Price
                                             </span>
@@ -533,9 +687,11 @@ function AdminProducts() {
                                                     "en-IN"
                                                 )}
                                             </strong>
+
                                         </div>
 
                                         <div>
+
                                             <span>
                                                 Stock
                                             </span>
@@ -544,22 +700,37 @@ function AdminProducts() {
                                                 {product.stockQuantity ??
                                                     0}
                                             </strong>
+
                                         </div>
 
                                     </div>
 
-                                    {/* Skin Type */}
-                                    {product.skinType && (
-                                        <div className="product-skin-type">
-                                            <strong>
-                                                Skin Type:
-                                            </strong>{" "}
-                                            {product.skinType}
-                                        </div>
-                                    )}
+                                    {product.skinType &&
+                                        (Array.isArray(
+                                            product.skinType
+                                        )
+                                            ? product.skinType.length > 0
+                                            : product.skinType) && (
 
-                                    {/* Active Status */}
+                                            <div className="product-skin-type">
+
+                                                <strong>
+                                                    Skin Type:
+                                                </strong>{" "}
+
+                                                {Array.isArray(
+                                                    product.skinType
+                                                )
+                                                    ? product.skinType.join(
+                                                        ", "
+                                                    )
+                                                    : product.skinType}
+
+                                            </div>
+                                        )}
+
                                     <div className="product-status">
+
                                         <span
                                             className={
                                                 product.isActive === false
@@ -571,9 +742,9 @@ function AdminProducts() {
                                                 ? "Inactive"
                                                 : "Active"}
                                         </span>
+
                                     </div>
 
-                                    {/* Actions */}
                                     <div className="product-card-actions">
 
                                         <button
@@ -597,13 +768,18 @@ function AdminProducts() {
                                         </button>
 
                                     </div>
+
                                 </div>
+
                             </div>
+
                         ))}
 
                     </div>
                 )}
+
             </div>
+
         </div>
     );
 }

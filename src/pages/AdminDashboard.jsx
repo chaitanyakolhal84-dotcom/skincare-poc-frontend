@@ -4,7 +4,6 @@ import api from "../services/api";
 import "./AdminDashboard.css";
 
 function AdminDashboard() {
-
     const navigate = useNavigate();
 
     const [user, setUser] = useState(null);
@@ -14,211 +13,110 @@ function AdminDashboard() {
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState("");
 
-    // ==========================================
-    // CHECK ADMIN + LOAD DATA
-    // ==========================================
-
     useEffect(() => {
+        const storedUser = JSON.parse(
+            localStorage.getItem("user")
+        );
 
-        const savedUser =
-            JSON.parse(
-                localStorage.getItem("user")
-            );
+        const token = localStorage.getItem("token");
 
-        const token =
-            localStorage.getItem("token");
-
-        if (!savedUser || !token) {
+        if (!token || !storedUser) {
             navigate("/login");
             return;
         }
 
-        if (savedUser.role !== "admin") {
+        if (storedUser.role !== "admin") {
             navigate("/");
             return;
         }
 
-        setUser(savedUser);
+        setUser(storedUser);
 
-        loadDashboard();
-
+        fetchDashboardData();
     }, [navigate]);
 
-    // ==========================================
-    // LOAD DASHBOARD DATA
-    // ==========================================
-
-    const loadDashboard = async () => {
-
+    const fetchDashboardData = async () => {
         try {
-
             setLoading(true);
             setError("");
 
-            const [
-                ordersResponse,
-                productsResponse
-            ] = await Promise.all([
-
-                api.get("/orders"),
-
-                api.get("/products")
-
-            ]);
-
-            const ordersData =
-                ordersResponse.data;
-
-            const productsData =
-                productsResponse.data;
+            const [ordersResponse, productsResponse] =
+                await Promise.all([
+                    api.get("/orders"),
+                    api.get("/products")
+                ]);
 
             setOrders(
-                ordersData.orders ||
-                ordersData ||
-                []
+                Array.isArray(ordersResponse.data)
+                    ? ordersResponse.data
+                    : ordersResponse.data?.orders || []
             );
 
             setProducts(
-                productsData.products ||
-                productsData ||
-                []
+                Array.isArray(productsResponse.data)
+                    ? productsResponse.data
+                    : productsResponse.data?.products || []
             );
-
         } catch (err) {
-
-            console.error(
-                "Dashboard error:",
-                err
-            );
+            console.error("Dashboard error:", err);
 
             setError(
                 err.response?.data?.message ||
-                "Failed to load dashboard."
+                "Failed to load dashboard data."
             );
-
         } finally {
-
             setLoading(false);
-
         }
     };
 
-    // ==========================================
-    // LOGOUT
-    // ==========================================
-
     const logout = () => {
-
         localStorage.removeItem("token");
         localStorage.removeItem("user");
 
-        navigate("/login");
-
+        window.location.href = "/login";
     };
 
-    // ==========================================
-    // CALCULATIONS
-    // ==========================================
+    const totalOrders = orders.length;
 
-    const totalSales =
-        orders.reduce(
-            (total, order) =>
-                total +
-                Number(
-                    order.totalAmount || 0
-                ),
-            0
-        );
+    const totalProducts = products.length;
 
-    const pendingOrders =
-        orders.filter(
-            (order) =>
-                String(
-                    order.orderStatus || ""
-                ).toLowerCase() === "pending"
-        ).length;
+    const totalRevenue = orders.reduce(
+        (total, order) => {
+            return total + Number(order.totalAmount || 0);
+        },
+        0
+    );
 
-    const processingOrders =
-        orders.filter(
-            (order) =>
-                String(
-                    order.orderStatus || ""
-                ).toLowerCase() === "processing"
-        ).length;
-
-    const shippedOrders =
-        orders.filter(
-            (order) =>
-                String(
-                    order.orderStatus || ""
-                ).toLowerCase() === "shipped"
-        ).length;
-
-    const deliveredOrders =
-        orders.filter(
-            (order) =>
-                String(
-                    order.orderStatus || ""
-                ).toLowerCase() === "delivered"
-        ).length;
-
-    // ==========================================
-    // LOADING
-    // ==========================================
-
-    if (loading) {
-
-        return (
-            <div className="admin-loading">
-
-                🌿
-
-                <p>
-                    Loading Admin Dashboard...
-                </p>
-
-            </div>
-        );
-
-    }
-
-    // ==========================================
-    // PAGE
-    // ==========================================
+    const recentOrders = [...orders]
+        .sort(
+            (a, b) =>
+                new Date(b.createdAt || 0) -
+                new Date(a.createdAt || 0)
+        )
+        .slice(0, 5);
 
     return (
-
-        <div className="admin-page">
+        <div className="admin-dashboard">
 
             {/* ================= NAVBAR ================= */}
 
             <nav className="admin-navbar">
 
                 <div className="admin-brand">
-
                     🌿 Skincare POC
-
-                    <span>
-                        ADMIN
-                    </span>
-
                 </div>
 
-                <div className="admin-nav">
+                <div className="admin-nav-links">
 
                     <button
-                        onClick={() =>
-                            navigate("/")
-                        }
+                        onClick={() => navigate("/")}
                     >
                         Home
                     </button>
 
                     <button
                         onClick={() =>
-                            navigate(
-                                "/admin/products"
-                            )
+                            navigate("/admin/products")
                         }
                     >
                         Products
@@ -226,16 +124,31 @@ function AdminDashboard() {
 
                     <button
                         onClick={() =>
-                            navigate(
-                                "/admin/orders"
-                            )
+                            navigate("/admin/orders")
                         }
                     >
                         Orders
                     </button>
 
                     <button
-                        className="admin-logout"
+                        onClick={() =>
+                            navigate("/admin/promotions")
+                        }
+                    >
+                        Promotions
+                    </button>
+
+                    <button
+                        className="admin-coupon-nav-btn"
+                        onClick={() =>
+                            navigate("/admin/coupons")
+                        }
+                    >
+                        🎟 Coupons
+                    </button>
+
+                    <button
+                        className="admin-logout-btn"
                         onClick={logout}
                     >
                         Logout
@@ -245,59 +158,54 @@ function AdminDashboard() {
 
             </nav>
 
-            {/* ================= MAIN ================= */}
+            {/* ================= MAIN CONTENT ================= */}
 
-            <main className="admin-container">
+            <main className="admin-content">
 
                 {/* HEADER */}
 
-                <div className="admin-header">
+                <div className="admin-page-header">
 
                     <div>
+
+                        <span className="admin-label">
+                            ADMIN PANEL
+                        </span>
 
                         <h1>
                             Admin Dashboard
                         </h1>
 
                         <p>
-                            Welcome,{" "}
+                            Welcome back,{" "}
                             <strong>
-                                {user?.name}
+                                {user?.name || "Admin"}
                             </strong>
+                            . Manage your skincare store
+                            from here.
                         </p>
 
                     </div>
-
-                    <button
-                        className="refresh-button"
-                        onClick={
-                            loadDashboard
-                        }
-                    >
-                        ↻ Refresh
-                    </button>
 
                 </div>
 
                 {/* ERROR */}
 
                 {error && (
-
                     <div className="admin-error">
                         {error}
                     </div>
-
                 )}
 
-                {/* ================= STATISTICS ================= */}
+                {/* ================= STATS ================= */}
 
-                <div className="stats-grid">
+                <div className="admin-stats-grid">
 
-                    {/* TOTAL ORDERS */}
+                    {/* Orders */}
 
-                    <div className="stat-card">
+                    <div className="admin-stat-card">
 
-                        <div className="stat-icon">
+                        <div className="admin-stat-icon">
                             📦
                         </div>
 
@@ -308,140 +216,57 @@ function AdminDashboard() {
                             </span>
 
                             <strong>
-                                {orders.length}
+                                {loading
+                                    ? "..."
+                                    : totalOrders}
                             </strong>
 
                         </div>
 
                     </div>
 
-                    {/* PRODUCTS */}
+                    {/* Products */}
 
-                    <div className="stat-card">
+                    <div className="admin-stat-card">
 
-                        <div className="stat-icon">
-                            🛍️
+                        <div className="admin-stat-icon">
+                            🧴
                         </div>
 
                         <div>
 
                             <span>
-                                Products
+                                Total Products
                             </span>
 
                             <strong>
-                                {products.length}
+                                {loading
+                                    ? "..."
+                                    : totalProducts}
                             </strong>
 
                         </div>
 
                     </div>
 
-                    {/* PENDING */}
+                    {/* Revenue */}
 
-                    <div className="stat-card">
+                    <div className="admin-stat-card">
 
-                        <div className="stat-icon">
-                            ⏳
-                        </div>
-
-                        <div>
-
-                            <span>
-                                Pending
-                            </span>
-
-                            <strong>
-                                {pendingOrders}
-                            </strong>
-
-                        </div>
-
-                    </div>
-
-                    {/* PROCESSING */}
-
-                    <div className="stat-card">
-
-                        <div className="stat-icon">
-                            ⚙️
-                        </div>
-
-                        <div>
-
-                            <span>
-                                Processing
-                            </span>
-
-                            <strong>
-                                {processingOrders}
-                            </strong>
-
-                        </div>
-
-                    </div>
-
-                    {/* SHIPPED */}
-
-                    <div className="stat-card">
-
-                        <div className="stat-icon">
-                            🚚
-                        </div>
-
-                        <div>
-
-                            <span>
-                                Shipped
-                            </span>
-
-                            <strong>
-                                {shippedOrders}
-                            </strong>
-
-                        </div>
-
-                    </div>
-
-                    {/* DELIVERED */}
-
-                    <div className="stat-card">
-
-                        <div className="stat-icon">
-                            ✅
-                        </div>
-
-                        <div>
-
-                            <span>
-                                Delivered
-                            </span>
-
-                            <strong>
-                                {deliveredOrders}
-                            </strong>
-
-                        </div>
-
-                    </div>
-
-                    {/* SALES */}
-
-                    <div className="stat-card sales-card">
-
-                        <div className="stat-icon">
+                        <div className="admin-stat-icon">
                             ₹
                         </div>
 
                         <div>
 
                             <span>
-                                Total Sales
+                                Total Revenue
                             </span>
 
                             <strong>
-                                ₹
-                                {totalSales.toFixed(2)}
+                                {loading
+                                    ? "..."
+                                    : `₹${totalRevenue}`}
                             </strong>
 
                         </div>
@@ -452,59 +277,162 @@ function AdminDashboard() {
 
                 {/* ================= QUICK ACTIONS ================= */}
 
-                <section className="dashboard-section">
+                <section className="admin-section">
 
-                    <h2>
-                        Quick Actions
-                    </h2>
+                    <div className="admin-section-header">
 
-                    <div className="quick-actions">
+                        <div>
+
+                            <h2>
+                                Quick Actions
+                            </h2>
+
+                            <p>
+                                Manage different parts of
+                                your store.
+                            </p>
+
+                        </div>
+
+                    </div>
+
+                    <div className="admin-action-grid">
+
+                        {/* PRODUCTS */}
 
                         <button
+                            className="admin-action-card"
                             onClick={() =>
-                                navigate(
-                                    "/admin/products"
-                                )
+                                navigate("/admin/products")
                             }
                         >
 
-                            🛍️
-
-                            <span>
-                                Manage Products
+                            <span className="action-icon">
+                                🧴
                             </span>
+
+                            <div>
+
+                                <strong>
+                                    Manage Products
+                                </strong>
+
+                                <small>
+                                    Add, edit and delete
+                                    products
+                                </small>
+
+                            </div>
 
                         </button>
 
+                        {/* ORDERS */}
+
                         <button
+                            className="admin-action-card"
                             onClick={() =>
-                                navigate(
-                                    "/admin/orders"
-                                )
+                                navigate("/admin/orders")
                             }
                         >
 
-                            📦
-
-                            <span>
-                                Manage Orders
+                            <span className="action-icon">
+                                📦
                             </span>
+
+                            <div>
+
+                                <strong>
+                                    Manage Orders
+                                </strong>
+
+                                <small>
+                                    View and update customer
+                                    orders
+                                </small>
+
+                            </div>
 
                         </button>
 
+                        {/* PROMOTIONS */}
+
                         <button
+                            className="admin-action-card"
                             onClick={() =>
-                                navigate(
-                                    "/products"
-                                )
+                                navigate("/admin/promotions")
                             }
                         >
 
-                            👁️
-
-                            <span>
-                                View Store
+                            <span className="action-icon">
+                                📢
                             </span>
+
+                            <div>
+
+                                <strong>
+                                    Manage Promotions
+                                </strong>
+
+                                <small>
+                                    Manage Home page offers
+                                </small>
+
+                            </div>
+
+                        </button>
+
+                        {/* COUPONS */}
+
+                        <button
+                            className="admin-action-card coupon-action-card"
+                            onClick={() =>
+                                navigate("/admin/coupons")
+                            }
+                        >
+
+                            <span className="action-icon">
+                                🎟️
+                            </span>
+
+                            <div>
+
+                                <strong>
+                                    Manage Coupons
+                                </strong>
+
+                                <small>
+                                    Create coupons for
+                                    Checkout
+                                </small>
+
+                            </div>
+
+                        </button>
+
+                        {/* VIEW STORE */}
+
+                        <button
+                            className="admin-action-card"
+                            onClick={() =>
+                                navigate("/products")
+                            }
+                        >
+
+                            <span className="action-icon">
+                                🛍️
+                            </span>
+
+                            <div>
+
+                                <strong>
+                                    View Store
+                                </strong>
+
+                                <small>
+                                    Open customer store
+                                </small>
+
+                            </div>
 
                         </button>
 
@@ -514,19 +442,26 @@ function AdminDashboard() {
 
                 {/* ================= RECENT ORDERS ================= */}
 
-                <section className="dashboard-section">
+                <section className="admin-section">
 
-                    <div className="section-title">
+                    <div className="admin-section-header">
 
-                        <h2>
-                            Recent Orders
-                        </h2>
+                        <div>
+
+                            <h2>
+                                Recent Orders
+                            </h2>
+
+                            <p>
+                                Latest customer orders.
+                            </p>
+
+                        </div>
 
                         <button
+                            className="view-all-btn"
                             onClick={() =>
-                                navigate(
-                                    "/admin/orders"
-                                )
+                                navigate("/admin/orders")
                             }
                         >
                             View All →
@@ -534,30 +469,31 @@ function AdminDashboard() {
 
                     </div>
 
-                    {orders.length === 0 ? (
+                    {/* Loading */}
 
-                        <div className="empty-dashboard">
+                    {loading ? (
+                        <div className="admin-loading">
+                            Loading orders...
+                        </div>
 
-                            📦
+                    ) : recentOrders.length === 0 ? (
 
-                            <p>
-                                No orders found.
-                            </p>
-
+                        <div className="admin-empty">
+                            No orders found.
                         </div>
 
                     ) : (
 
-                        <div className="table-wrapper">
+                        <div className="admin-table-wrapper">
 
-                            <table>
+                            <table className="admin-table">
 
                                 <thead>
 
                                     <tr>
 
                                         <th>
-                                            Order
+                                            Order ID
                                         </th>
 
                                         <th>
@@ -565,7 +501,7 @@ function AdminDashboard() {
                                         </th>
 
                                         <th>
-                                            Total
+                                            Amount
                                         </th>
 
                                         <th>
@@ -576,77 +512,71 @@ function AdminDashboard() {
                                             Status
                                         </th>
 
+                                        <th>
+                                            Date
+                                        </th>
+
                                     </tr>
 
                                 </thead>
 
                                 <tbody>
 
-                                    {orders
-                                        .slice(0, 10)
-                                        .map(
-                                            (order) => (
+                                    {recentOrders.map(
+                                        (order) => (
 
-                                                <tr
-                                                    key={
-                                                        order._id
-                                                    }
-                                                >
+                                            <tr
+                                                key={order._id}
+                                            >
 
-                                                    <td>
-                                                        #
-                                                        {String(
-                                                            order._id
-                                                        ).slice(
-                                                            -6
-                                                        )}
-                                                    </td>
+                                                <td>
+                                                    #
+                                                    {order._id
+                                                        ? order._id.slice(-6)
+                                                        : "N/A"}
+                                                </td>
 
-                                                    <td>
+                                                <td>
+                                                    {order.user?.name ||
+                                                        order.customerName ||
+                                                        "Customer"}
+                                                </td>
 
-                                                        {order
-                                                            .user
-                                                            ?.name ||
-                                                            "User"}
+                                                <td>
+                                                    ₹
+                                                    {order.totalAmount ||
+                                                        0}
+                                                </td>
 
-                                                    </td>
+                                                <td>
+                                                    {order.paymentStatus ||
+                                                        order.paymentMethod ||
+                                                        "Pending"}
+                                                </td>
 
-                                                    <td>
-                                                        ₹
-                                                        {Number(
-                                                            order.totalAmount ||
-                                                            0
-                                                        ).toFixed(
-                                                            2
-                                                        )}
-                                                    </td>
+                                                <td>
 
-                                                    <td>
+                                                    <span className="order-status">
+                                                        {order.orderStatus ||
+                                                            "Pending"}
+                                                    </span>
 
-                                                        <span className="payment-badge">
+                                                </td>
 
-                                                            {order.paymentStatus ||
-                                                                "Pending"}
+                                                <td>
+                                                    {order.createdAt
+                                                        ? new Date(
+                                                            order.createdAt
+                                                        ).toLocaleDateString(
+                                                            "en-IN"
+                                                        )
+                                                        : "N/A"}
+                                                </td>
 
-                                                        </span>
+                                            </tr>
 
-                                                    </td>
-
-                                                    <td>
-
-                                                        <span className="status-badge">
-
-                                                            {order.orderStatus ||
-                                                                "Pending"}
-
-                                                        </span>
-
-                                                    </td>
-
-                                                </tr>
-
-                                            )
-                                        )}
+                                        )
+                                    )}
 
                                 </tbody>
 

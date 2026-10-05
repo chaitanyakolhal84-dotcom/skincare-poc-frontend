@@ -7,13 +7,22 @@ function Products() {
     const navigate = useNavigate();
 
     const [products, setProducts] = useState([]);
+
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState("");
     const [message, setMessage] = useState("");
 
+    // ==========================================
+    // LOAD PRODUCTS
+    // ==========================================
+
     useEffect(() => {
         fetchProducts();
     }, []);
+
+    // ==========================================
+    // FETCH PRODUCTS
+    // ==========================================
 
     const fetchProducts = async () => {
         try {
@@ -22,9 +31,18 @@ function Products() {
 
             const response = await api.get("/products");
 
-            setProducts(response.data);
+            const productData =
+                response.data?.products ||
+                response.data ||
+                [];
+
+            setProducts(productData);
+
         } catch (err) {
-            console.error("Products error:", err);
+            console.error(
+                "Products error:",
+                err
+            );
 
             setError(
                 err.response?.data?.message ||
@@ -35,25 +53,35 @@ function Products() {
         }
     };
 
+    // ==========================================
+    // ADD TO CART
+    // ==========================================
+
     const addToCart = (product) => {
         const existingCart =
-            JSON.parse(localStorage.getItem("cart")) || [];
+            JSON.parse(
+                localStorage.getItem("cart")
+            ) || [];
 
-        const existingItem = existingCart.find(
-            (item) => item.product === product._id
-        );
+        const existingItem =
+            existingCart.find(
+                (item) =>
+                    item.product === product._id
+            );
 
         let updatedCart;
 
         if (existingItem) {
-            updatedCart = existingCart.map((item) =>
-                item.product === product._id
-                    ? {
-                        ...item,
-                        quantity: item.quantity + 1
-                    }
-                    : item
-            );
+            updatedCart =
+                existingCart.map((item) =>
+                    item.product === product._id
+                        ? {
+                            ...item,
+                            quantity:
+                                item.quantity + 1
+                        }
+                        : item
+                );
         } else {
             updatedCart = [
                 ...existingCart,
@@ -80,6 +108,10 @@ function Products() {
         }, 2500);
     };
 
+    // ==========================================
+    // LOGOUT
+    // ==========================================
+
     const logout = () => {
         localStorage.removeItem("token");
         localStorage.removeItem("user");
@@ -88,9 +120,14 @@ function Products() {
         navigate("/login");
     };
 
+    // ==========================================
+    // LOADING
+    // ==========================================
+
     if (loading) {
         return (
             <div className="products-loading">
+
                 <div className="loading-icon">
                     🌿
                 </div>
@@ -98,19 +135,29 @@ function Products() {
                 <h2>
                     Loading Products...
                 </h2>
+
             </div>
         );
     }
 
+    // ==========================================
+    // PAGE
+    // ==========================================
+
     return (
         <div className="products-page">
 
-            {/* Navbar */}
+            {/* ==================================
+                NAVBAR
+            ================================== */}
+
             <nav className="products-navbar">
 
                 <div
                     className="products-brand"
-                    onClick={() => navigate("/")}
+                    onClick={() =>
+                        navigate("/")
+                    }
                 >
                     🌿 Skincare POC
                 </div>
@@ -118,12 +165,17 @@ function Products() {
                 <div className="products-nav-links">
 
                     <button
-                        onClick={() => navigate("/")}
+                        className="active"
+                        onClick={() =>
+                            navigate("/")
+                        }
                     >
                         Home
                     </button>
 
-                    <button className="active">
+                    <button
+                        className="active"
+                    >
                         Products
                     </button>
 
@@ -167,11 +219,16 @@ function Products() {
                     </button>
 
                 </div>
+
             </nav>
 
-            {/* Success Message */}
+            {/* ==================================
+                SUCCESS MESSAGE
+            ================================== */}
+
             {message && (
                 <div className="cart-success-message">
+
                     <span className="success-check">
                         ✓
                     </span>
@@ -179,15 +236,24 @@ function Products() {
                     <span>
                         {message}
                     </span>
+
                 </div>
             )}
 
-            {/* Main Content */}
+            {/* ==================================
+                MAIN CONTENT
+            ================================== */}
+
             <main className="products-container">
+
+                {/* ==================================
+                    PRODUCTS HEADING
+                ================================== */}
 
                 <div className="products-heading">
 
                     <div>
+
                         <span className="small-title">
                             OUR COLLECTION
                         </span>
@@ -200,6 +266,7 @@ function Products() {
                             Discover products designed
                             for healthy and beautiful skin.
                         </p>
+
                     </div>
 
                     <button
@@ -213,16 +280,24 @@ function Products() {
 
                 </div>
 
-                {/* Error */}
+                {/* ==================================
+                    ERROR
+                ================================== */}
+
                 {error && (
                     <div className="products-error">
                         ⚠️ {error}
                     </div>
                 )}
 
-                {/* Products */}
+                {/* ==================================
+                    PRODUCTS
+                ================================== */}
+
                 {products.length === 0 ? (
+
                     <div className="empty-products">
+
                         <div>
                             🧴
                         </div>
@@ -235,117 +310,139 @@ function Products() {
                             There are currently no
                             skincare products available.
                         </p>
+
                     </div>
+
                 ) : (
+
                     <div className="products-grid">
 
-                        {products.map((product) => (
+                        {products.map(
+                            (product) => (
 
-                            <div
-                                className="product-card"
-                                key={product._id}
-                            >
+                                <div
+                                    className="product-card"
+                                    key={product._id}
+                                >
 
-                                {/* Product Image */}
-                                <div className="product-image">
+                                    {/* PRODUCT IMAGE */}
 
-                                    <div className="product-image-icon">
-                                        🌿
-                                    </div>
+                                    <div className="product-image">
 
-                                    {product.stockQuantity <=
-                                        5 &&
-                                        product.stockQuantity >
-                                        0 && (
-                                            <span className="stock-badge">
-                                                Only{" "}
-                                                {
-                                                    product.stockQuantity
-                                                }{" "}
-                                                left
-                                            </span>
-                                        )}
-
-                                    {product.stockQuantity ===
-                                        0 && (
-                                            <span className="out-stock-badge">
-                                                Out of Stock
-                                            </span>
-                                        )}
-
-                                </div>
-
-                                {/* Product Info */}
-                                <div className="product-info">
-
-                                    <span className="product-brand">
-                                        {product.brand ||
-                                            "Skincare"}
-                                    </span>
-
-                                    <h2>
-                                        {product.name}
-                                    </h2>
-
-                                    <p className="product-description">
-                                        {product.description ||
-                                            "Premium skincare product for your daily skincare routine."}
-                                    </p>
-
-                                    {product.skinType && (
-                                        <div className="skin-type">
-                                            Skin Type:{" "}
-                                            {Array.isArray(
-                                                product.skinType
-                                            )
-                                                ? product.skinType.join(
-                                                    ", "
-                                                )
-                                                : product.skinType}
+                                        <div className="product-image-icon">
+                                            🌿
                                         </div>
-                                    )}
 
-                                    <div className="product-bottom">
+                                        {product.stockQuantity <=
+                                            5 &&
+                                            product.stockQuantity >
+                                            0 && (
+                                                <span className="stock-badge">
 
-                                        <div className="product-price">
-                                            ₹
-                                            {Number(
-                                                product.price
-                                            ).toLocaleString(
-                                                "en-IN"
+                                                    Only{" "}
+                                                    {
+                                                        product.stockQuantity
+                                                    }{" "}
+                                                    left
+
+                                                </span>
                                             )}
-                                        </div>
 
-                                        <button
-                                            className="add-cart-button"
-                                            disabled={
-                                                product.stockQuantity ===
-                                                0
+                                        {product.stockQuantity ===
+                                            0 && (
+                                                <span className="out-stock-badge">
+                                                    Out of Stock
+                                                </span>
+                                            )}
+
+                                    </div>
+
+                                    {/* PRODUCT INFO */}
+
+                                    <div className="product-info">
+
+                                        <span className="product-brand">
+                                            {
+                                                product.brand ||
+                                                "Skincare"
                                             }
-                                            onClick={() =>
-                                                addToCart(
-                                                    product
+                                        </span>
+
+                                        <h2>
+                                            {
+                                                product.name
+                                            }
+                                        </h2>
+
+                                        <p className="product-description">
+                                            {
+                                                product.description ||
+                                                "Premium skincare product for your daily skincare routine."
+                                            }
+                                        </p>
+
+                                        {product.skinType && (
+                                            <div className="skin-type">
+
+                                                Skin Type:{" "}
+
+                                                {Array.isArray(
+                                                    product.skinType
                                                 )
-                                            }
-                                        >
-                                            {product.stockQuantity ===
-                                                0
-                                                ? "Out of Stock"
-                                                : "🛒 Add to Cart"}
-                                        </button>
+                                                    ? product.skinType.join(
+                                                        ", "
+                                                    )
+                                                    : product.skinType}
+
+                                            </div>
+                                        )}
+
+                                        <div className="product-bottom">
+
+                                            <div className="product-price">
+
+                                                ₹
+                                                {Number(
+                                                    product.price
+                                                ).toLocaleString(
+                                                    "en-IN"
+                                                )}
+
+                                            </div>
+
+                                            <button
+                                                className="add-cart-button"
+                                                disabled={
+                                                    product.stockQuantity ===
+                                                    0
+                                                }
+                                                onClick={() =>
+                                                    addToCart(
+                                                        product
+                                                    )
+                                                }
+                                            >
+                                                {product.stockQuantity ===
+                                                    0
+                                                    ? "Out of Stock"
+                                                    : "🛒 Add to Cart"}
+                                            </button>
+
+                                        </div>
 
                                     </div>
 
                                 </div>
 
-                            </div>
-
-                        ))}
+                            )
+                        )}
 
                     </div>
+
                 )}
 
             </main>
+
         </div>
     );
 }

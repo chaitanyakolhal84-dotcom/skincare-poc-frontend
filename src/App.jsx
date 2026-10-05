@@ -1,8 +1,11 @@
+import { useEffect, useState } from "react";
+
 import {
   BrowserRouter,
   Routes,
   Route,
-  Navigate
+  Navigate,
+  useNavigate
 } from "react-router-dom";
 
 import Login from "./pages/Login";
@@ -17,37 +20,149 @@ import Profile from "./pages/Profile";
 import AdminDashboard from "./pages/AdminDashboard";
 import AdminProducts from "./pages/AdminProducts";
 import AdminOrders from "./pages/AdminOrders";
+import ManagePromotions from "./pages/ManagePromotions";
+import ManageCoupons from "./pages/ManageCoupons";
+
+import api from "./services/api";
 
 import "./App.css";
 
 
-// ==========================================
-// HOME PAGE
-// ==========================================
+/* =========================================================
+   HOME PAGE
+   ========================================================= */
+
 function Home() {
 
-  const user = JSON.parse(
-    localStorage.getItem("user")
-  );
+  const navigate = useNavigate();
 
-  // ==========================================
-  // LOGOUT
-  // ==========================================
-  const logout = () => {
+  const [user, setUser] = useState(null);
 
-    localStorage.removeItem("token");
-    localStorage.removeItem("user");
+  const [promotion, setPromotion] = useState(null);
 
-    window.location.href = "/login";
+  const [promotionLoading, setPromotionLoading] =
+    useState(true);
+
+
+  /* =======================================================
+     LOAD USER
+     ======================================================= */
+
+  useEffect(() => {
+
+    const storedUser =
+      localStorage.getItem("user");
+
+    if (storedUser) {
+
+      try {
+
+        setUser(
+          JSON.parse(storedUser)
+        );
+
+      } catch (error) {
+
+        console.error(
+          "User data error:",
+          error
+        );
+
+      }
+
+    }
+
+  }, []);
+
+
+  /* =======================================================
+     LOAD ACTIVE PROMOTION
+     ======================================================= */
+
+  useEffect(() => {
+
+    fetchPromotion();
+
+  }, []);
+
+
+  const fetchPromotion = async () => {
+
+    try {
+
+      setPromotionLoading(true);
+
+      const response =
+        await api.get(
+          "/promotions/active"
+        );
+
+      /*
+        Backend returns:
+        {
+          promotion: {...}
+        }
+
+        OR directly:
+        {...}
+      */
+
+      const activePromotion =
+        response.data?.promotion ||
+        response.data;
+
+      setPromotion(
+        activePromotion &&
+          activePromotion._id
+          ? activePromotion
+          : null
+      );
+
+    } catch (error) {
+
+      console.error(
+        "Promotion loading error:",
+        error
+      );
+
+      setPromotion(null);
+
+    } finally {
+
+      setPromotionLoading(false);
+
+    }
+
   };
 
 
+  /* =======================================================
+     LOGOUT
+     ======================================================= */
+
+  const logout = () => {
+
+    localStorage.removeItem("token");
+
+    localStorage.removeItem("user");
+
+    window.location.href = "/login";
+
+  };
+
+
+  /* =======================================================
+     HOME
+     ======================================================= */
+
   return (
+
     <div className="home-page">
 
-      {/* =========================================
-                NAVBAR
-            ========================================= */}
+      {/* =================================================
+          NAVBAR
+          ================================================= */}
+
       <nav className="navbar">
 
         <div className="brand">
@@ -82,11 +197,12 @@ function Home() {
           </a>
 
 
-          {/* Admin Link */}
           {user?.role === "admin" && (
+
             <a href="/admin">
               Admin
             </a>
+
           )}
 
 
@@ -102,81 +218,132 @@ function Home() {
       </nav>
 
 
-      {/* =========================================
-                HOME CONTENT
-            ========================================= */}
+      {/* =================================================
+          MAIN CONTENT
+          ================================================= */}
+
       <main className="home-content">
 
 
-        {/* =========================================
-                    COUPON ADVERTISEMENT
-                ========================================= */}
-        <div className="coupon-ad">
+        {/* =================================================
+            DYNAMIC PROMOTION
+            ================================================= */}
 
-          {/* Coupon Icon */}
-          <div className="coupon-ad-icon">
-            🎟️
-          </div>
+        {!promotionLoading &&
+          promotion && (
 
+            <div className="coupon-ad">
 
-          {/* Coupon Content */}
-          <div className="coupon-ad-content">
+              {/* ICON */}
 
-            <span className="coupon-ad-badge">
-              LIMITED OFFER
-            </span>
+              <div className="coupon-ad-icon">
+                🎟
+              </div>
 
 
-            <h2>
-              BUY 1 GET 1 FREE 🎁
-            </h2>
+              {/* CONTENT */}
+
+              <div className="coupon-ad-content">
 
 
-            <p>
-              Buy 1 product and get 1 product
-              free on selected skincare products.
-            </p>
+                {/* SUBTITLE */}
+
+                {promotion.subtitle && (
+
+                  <span className="coupon-ad-badge">
+
+                    {promotion.subtitle}
+
+                  </span>
+
+                )}
 
 
-            <div className="coupon-ad-actions">
+                {/* TITLE */}
 
-              <div className="coupon-code-box">
+                <h2>
 
-                <span>
-                  Use Code
-                </span>
+                  {promotion.title}
 
-                <strong>
-                  BUY1GET1
-                </strong>
+                </h2>
+
+
+                {/* DESCRIPTION */}
+
+                {promotion.description && (
+
+                  <p>
+
+                    {promotion.description}
+
+                  </p>
+
+                )}
+
+
+                {/* ACTIONS */}
+
+                <div className="coupon-ad-actions">
+
+
+                  {/* COUPON CODE */}
+
+                  {promotion.couponCode && (
+
+                    <div className="coupon-code-box">
+
+                      <span>
+                        Use Code
+                      </span>
+
+                      <strong>
+
+                        {promotion.couponCode}
+
+                      </strong>
+
+                    </div>
+
+                  )}
+
+
+                  {/* SHOP BUTTON */}
+
+                  <a
+                    href="/products"
+                    className="coupon-shop-button"
+                  >
+
+                    {promotion.buttonText ||
+                      "Shop Now"}
+
+                    {" →"}
+
+                  </a>
+
+                </div>
+
 
               </div>
 
 
-              <a
-                href="/products"
-                className="coupon-shop-button"
-              >
-                Shop Now →
-              </a>
+              {/* DECORATION */}
+
+              <div className="coupon-ad-decoration">
+                🌿
+              </div>
 
             </div>
 
-          </div>
+          )}
 
 
-          {/* Decoration */}
-          <div className="coupon-ad-decoration">
-            🌿
-          </div>
+        {/* =================================================
+            WELCOME CARD
+            ================================================= */}
 
-        </div>
-
-
-        {/* =========================================
-                    WELCOME CARD
-                ========================================= */}
         <div className="welcome-card">
+
 
           <div className="welcome-icon">
             🌿
@@ -184,61 +351,85 @@ function Home() {
 
 
           <h1>
-            Welcome, {user?.name || "User"}!
+
+            Welcome,{" "}
+            {user?.name || "User"}!
+
           </h1>
 
 
           <p>
+
             Welcome to Skincare POC.
             Explore skincare products,
             manage your orders and earn
             reward points.
+
           </p>
 
 
           {/* USER INFORMATION */}
+
           <div className="user-info">
 
+
             <div>
+
               <span>
                 Email
               </span>
 
               <strong>
+
                 {user?.email || "N/A"}
+
               </strong>
+
             </div>
 
 
             <div>
+
               <span>
                 Role
               </span>
 
               <strong>
+
                 {user?.role || "user"}
+
               </strong>
+
             </div>
 
 
             <div>
+
               <span>
                 Points
               </span>
 
               <strong>
+
                 {user?.points ?? 0}
+
               </strong>
+
             </div>
+
 
           </div>
 
 
-          {/* HOME BUTTONS */}
+          {/* BUTTONS */}
+
           <div className="home-buttons">
 
+
             <a href="/products">
+
               Browse Products
+
             </a>
 
 
@@ -246,23 +437,30 @@ function Home() {
               href="/rewards"
               className="secondary-home-button"
             >
+
               View Rewards
+
             </a>
 
+
           </div>
+
 
         </div>
 
       </main>
 
     </div>
+
   );
+
 }
 
 
-// ==========================================
-// MAIN APP
-// ==========================================
+/* =========================================================
+   APP
+   ========================================================= */
+
 function App() {
 
   return (
@@ -271,7 +469,9 @@ function App() {
 
       <Routes>
 
-        {/* Authentication */}
+
+        {/* ================= USER ================= */}
+
         <Route
           path="/login"
           element={<Login />}
@@ -282,8 +482,6 @@ function App() {
           element={<Register />}
         />
 
-
-        {/* User Pages */}
         <Route
           path="/"
           element={<Home />}
@@ -320,7 +518,8 @@ function App() {
         />
 
 
-        {/* Admin Pages */}
+        {/* ================= ADMIN ================= */}
+
         <Route
           path="/admin"
           element={<AdminDashboard />}
@@ -336,8 +535,19 @@ function App() {
           element={<AdminOrders />}
         />
 
+        <Route
+          path="/admin/promotions"
+          element={<ManagePromotions />}
+        />
 
-        {/* Unknown Route */}
+        <Route
+          path="/admin/coupons"
+          element={<ManageCoupons />}
+        />
+
+
+        {/* ================= DEFAULT ================= */}
+
         <Route
           path="*"
           element={
@@ -351,7 +561,10 @@ function App() {
       </Routes>
 
     </BrowserRouter>
+
   );
+
 }
+
 
 export default App;
